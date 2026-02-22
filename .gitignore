@@ -1,2 +1,11 @@
 # Ignore the datasets directory
-./datasets
+datasets
+
+# Ignore the __pycache__ directories
+*/__pycache__
+
+# Ignore the .vscode directory
+.vscode
+
+# Ignore the generated files
+configs
