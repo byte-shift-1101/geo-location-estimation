@@ -1,7 +1,13 @@
-class Parameter:
-    def __init__(self, key, name, unit, min_value=None, max_value=None, hooks=None):
+from __future__ import annotations
+from typing import overload, TypeVar, Generic
+from sample import hooks
+
+T = TypeVar('T')
+
+class Parameter(Generic[T]):
+    def __init__(self, key, unit, name=None, min_value=None, max_value=None, hooks=[hooks.hook_auto_save]):
         self.key = key
-        self.name = name
+        self.name = name or self.__derive_name(key)
         self.unit = unit
         self.min_value = min_value
         self.max_value = max_value
@@ -15,18 +21,26 @@ class Parameter:
         if self.max_value is not None and value > self.max_value:
             raise ValueError(f"{self.key} must be less than or equal to {self.max_value}.")
 
+    @overload
+    def __get__(self, instance: None, owner: type) -> Parameter[T]: ...
+    @overload
+    def __get__(self, instance: object, owner: type) -> T: ...
     def __get__(self, instance, owner):
         return getattr(instance, f"_{self.key}", None)
 
     def __set__(self, instance, value):
         self._validate(value)
         setattr(instance, f"_{self.key}", value)
+
+        if getattr(instance, 'SKIP_HOOKS', False):
+            return
         for hook in self.hooks:
             hook(instance)
 
-class PathParameter(Parameter):
-    def __init__(self, key, name):
-        super().__init__(key, name, None)
+    def __derive_name(self, key):
+        name = key.replace('_', ' ').title()
+        return name
 
-    def __get__(self, instance, owner):
-        return str(super().__get__(instance, owner))
+class PathParameter(Parameter[str]):
+    def __init__(self, key, name=None):
+        super().__init__(key, None, name=name, hooks=[])

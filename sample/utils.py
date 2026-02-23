@@ -11,3 +11,9 @@ def get_unique_path(standard_path):
             counter += 1
             new_path = f"{base}_{counter}{ext}"
         return new_path
+
+def params_exist(instance, params):
+    for param in params:
+        if getattr(instance, param) is None:
+            return False
+    return True
