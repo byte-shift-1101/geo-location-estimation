@@ -1,25 +1,44 @@
 from __future__ import annotations
 from typing import overload, TypeVar, Generic
-from sample import hooks
+from sample import hooks, utils
 
 T = TypeVar('T')
 
 class Parameter(Generic[T]):
-    def __init__(self, key, unit, name=None, min_value=None, max_value=None, hooks=[hooks.hook_auto_save]):
+    def __init__(self, key, unit, name=None, canBeNone=False, min_value=None, max_value=None, strict_length=None, hooks=[hooks.hook_auto_save]):
         self.key = key
         self.name = name or self.__derive_name(key)
         self.unit = unit
+        self.canBeNone = canBeNone
         self.min_value = min_value
         self.max_value = max_value
+        self.strict_length = strict_length
         self.hooks = hooks or []
 
     def _validate(self, value):
         if value is None:
-            raise ValueError(f"Cannot set {self.key} to None.")
-        if self.min_value is not None and value < self.min_value:
-            raise ValueError(f"{self.key} must be greater than or equal to {self.min_value}.")
-        if self.max_value is not None and value > self.max_value:
-            raise ValueError(f"{self.key} must be less than or equal to {self.max_value}.")
+            if not self.canBeNone:
+                raise ValueError(f"Cannot set {self.key} to None.")
+            return
+        if self.strict_length is not None:
+            if not utils.is_array(value):
+                raise ValueError(f"{self.key} must be an array with exactly {self.strict_length} elements.")
+            if len(value) != self.strict_length:
+                raise ValueError(f"{self.key} must be an array with exactly {self.strict_length} elements.")
+        if self.min_value is not None:
+            if utils.is_array(value):
+                for v in value:
+                    if v < self.min_value:
+                        raise ValueError(f"{self.key} must be greater than or equal to {self.min_value}.")
+            elif value < self.min_value:
+                raise ValueError(f"{self.key} must be greater than or equal to {self.min_value}.")
+        if self.max_value is not None:
+            if utils.is_array(value):
+                for v in value:
+                    if v > self.max_value:
+                        raise ValueError(f"{self.key} must be less than or equal to {self.max_value}.")
+            elif value > self.max_value:
+                raise ValueError(f"{self.key} must be less than or equal to {self.max_value}.")
 
     @overload
     def __get__(self, instance: None, owner: type) -> Parameter[T]: ...

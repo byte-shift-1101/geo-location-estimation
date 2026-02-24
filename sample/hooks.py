@@ -1,3 +1,5 @@
+from sample import utils
+
 # Hook decorators
 def disable_other_hooks(hook_func):
     def decorator(instance):
@@ -10,7 +12,7 @@ def disable_other_hooks(hook_func):
 def hook_auto_save(instance):
     assert hasattr(instance, 'UPDATE_JSON_ON_ATTRIBUTE_SET'), "Instance must have UPDATE_JSON_ON_ATTRIBUTE_SET attribute"
     if getattr(instance, 'UPDATE_JSON_ON_ATTRIBUTE_SET', False):
-        instance.save()
+        utils.save(instance)
 
 # Camera specific hooks
 @disable_other_hooks

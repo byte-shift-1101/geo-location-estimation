@@ -8,17 +8,17 @@ from sample.parameter import Parameter as P, PathParameter as PP
 np.set_printoptions(precision=4, suppress=True)
 
 class Camera:
-    focal_length: P[float] = P('focal_length', 'mm', min_value=0, hooks=[
+    focal_length: P[float] = P('focal_length', 'millimeters', min_value=0, hooks=[
         hooks.hook_auto_calculate_fov,
         hooks.hook_auto_calculate_sensor_size,
         hooks.hook_auto_save
     ])
-    sensor_width: P[float] = P('sensor_width', 'mm', min_value=0, hooks=[
+    sensor_width: P[float] = P('sensor_width', 'millimeters', min_value=0, hooks=[
         hooks.hook_auto_calculate_fov,
         hooks.hook_auto_calculate_focal_length,
         hooks.hook_auto_save
     ])
-    sensor_height: P[float] = P('sensor_height', 'mm', min_value=0, hooks=[
+    sensor_height: P[float] = P('sensor_height', 'millimeters', min_value=0, hooks=[
         hooks.hook_auto_calculate_fov,
         hooks.hook_auto_calculate_focal_length,
         hooks.hook_auto_save
@@ -84,28 +84,16 @@ class Camera:
         ])
         return intrinsic_matrix
 
+    @property
+    def intrinsic_matrix_4x4(self):
+        intrinsic_3x4 = self.intrinsic_matrix_3x4
+        intrinsic_4x4 = np.vstack([intrinsic_3x4, [0, 0, 0, 1]])
+        return intrinsic_4x4
+
     def to_dict(self):
         return {key: value for key, value in vars(Camera).items() if isinstance(value, P) and not isinstance(value, PP)}
 
-    def save(self):
-        data = self.to_dict()
-        values = {key: getattr(self, key) for key in data.keys()}
-        with open(self.storage_path, 'w') as f:
-            json.dump(values, f, indent=4)
-
-    def load(self):
-        with open(self.storage_path, 'r') as f:
-            data = json.load(f)
-
-        self.SKIP_HOOKS = True
-        for key, value in data.items():
-            setattr(self, key, value)
-        self.SKIP_HOOKS = False
-
     def __str__(self):
-        data = self.to_dict()
-        summary = ""
-        for key, value in data.items():
-            summary += f"\t{value.name}: {getattr(self, key)} {value.unit}\n"
-
-        return f"Camera\n{summary}\nStored at: {self.storage_path}"
+        data = utils.to_str(self)
+        data += f"\nStored at: {self.storage_path}"
+        return data

@@ -2,6 +2,7 @@ import math
 
 # Tweakble constants
 STANDARD_CAMERA_STORAGE_PATH = "./configs/cameras/camera.json"
+STANDARD_REFERENCE_FRAME_FOLDER = "./configs/reference_frames/"
 
 UPDATE_JSON_ON_ATTRIBUTE_SET = True
 AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS = True
