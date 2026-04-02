@@ -1,9 +1,10 @@
 import math
 
 # Tweakble constants
-STANDARD_ASSEMBLY_FOLDER = "./configs/assemblies/"
-STANDARD_CAMERA_STORAGE_PATH = "./configs/cameras/camera.json"
-STANDARD_REFERENCE_FRAME_FOLDER = "./configs/reference_frames/"
+CONFIG_FOLDER = "./configs"
+STANDARD_ASSEMBLY_FOLDER = f"{CONFIG_FOLDER}/assemblies/"
+STANDARD_CAMERA_STORAGE_PATH = f"{CONFIG_FOLDER}/cameras/camera.json"
+STANDARD_REFERENCE_FRAME_FOLDER = f"{CONFIG_FOLDER}/reference_frames/"
 
 UPDATE_JSON_ON_ATTRIBUTE_SET = True
 AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS = True

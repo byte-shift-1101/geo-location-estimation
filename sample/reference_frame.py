@@ -1,31 +1,22 @@
 import numpy as np
 from numpy import typing as npt
-import os
 
 from sample import utils, constants
 from sample.base_model import BaseModel
 from sample.parameter import Parameter as P, PathParameter as PP
 
 class ReferenceFrame(BaseModel):
-    name: P[str] = P('name', None)
     position: P[npt.NDArray[np.float64]] = P('position', 'meters', strict_length=3)
     orientation: P[npt.NDArray[np.float64]] = P('orientation', 'degrees', min_value=0, max_value=360, strict_length=3)
-    parentFrame: P[str] = P('parentFrame', None, canBeNone=True)
-
-    storage_path: PP = PP('storage_path')
+    parent_frame: P[str] = P('parent_frame', None, can_be_none=True)
 
     def __init__(self, name=None):
-        super().__init__()
+        super().__init__(name=name)
         self.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS = constants.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS
-
-        storage_filename = f"{name}_reference_frame.json" if name is not None else "reference_frame.json"
-        self.storage_path = utils.get_unique_path(os.path.join(constants.STANDARD_REFERENCE_FRAME_FOLDER, storage_filename))
-        if name is not None:
-            self.name = name
 
     @property
     def conversion_matrix_from_parent_4x4(self):
-        if self.parentFrame is None:
+        if self.parent_frame is None:
             return np.eye(4)
 
         orientation_rad = np.radians(self.orientation)
@@ -52,7 +43,7 @@ class ReferenceFrame(BaseModel):
 
     @property
     def conversion_matrix_to_parent_4x4(self):
-        if self.parentFrame is None:
+        if self.parent_frame is None:
             return np.eye(4)
 
         orientation_rad = np.radians(self.orientation)

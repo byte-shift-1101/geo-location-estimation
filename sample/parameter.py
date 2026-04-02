@@ -5,11 +5,15 @@ from sample import hooks, utils
 T = TypeVar('T')
 
 class Parameter(Generic[T]):
-    def __init__(self, key, unit, name=None, canBeNone=False, min_value=None, max_value=None, strict_length=None, hooks=[hooks.hook_auto_save]):
+    def __init__(
+            self, key: str, unit: str | None, name: str | None = None, can_be_none: bool = False,
+            min_value: int | float | None = None, max_value: int | float | None = None, strict_length: int | None = None,
+            hooks=[hooks.hook_auto_save]
+        ):
         self.key = key
-        self.name = name or self.__derive_name(key)
+        self.name = name or utils.formalize_str(key)
         self.unit = unit
-        self.canBeNone = canBeNone
+        self.can_be_none = can_be_none
         self.min_value = min_value
         self.max_value = max_value
         self.strict_length = strict_length
@@ -17,7 +21,7 @@ class Parameter(Generic[T]):
 
     def _validate(self, value):
         if value is None:
-            if not self.canBeNone:
+            if not self.can_be_none:
                 raise ValueError(f"Cannot set {self.key} to None.")
             return
         if self.strict_length is not None:
@@ -55,10 +59,6 @@ class Parameter(Generic[T]):
             return
         for hook in self.hooks:
             hook(instance)
-
-    def __derive_name(self, key):
-        name = key.replace('_', ' ').title()
-        return name
 
 class PathParameter(Parameter[str]):
     def __init__(self, key, name=None):

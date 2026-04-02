@@ -1,18 +1,18 @@
-from sample import utils
-
 # Hook decorators
 def disable_other_hooks(hook_func):
-    def decorator(instance):
+    def decorator(instance, *args, **kwargs):
         setattr(instance, 'SKIP_HOOKS', True)
-        hook_func(instance)
-        setattr(instance, 'SKIP_HOOKS', False)
+        try:
+            return hook_func(instance, *args, **kwargs)
+        finally:
+            setattr(instance, 'SKIP_HOOKS', False)
     return decorator
 
 # General functions
 def hook_auto_save(instance):
     assert hasattr(instance, 'UPDATE_JSON_ON_ATTRIBUTE_SET'), "Instance must have UPDATE_JSON_ON_ATTRIBUTE_SET attribute"
     if getattr(instance, 'UPDATE_JSON_ON_ATTRIBUTE_SET', False):
-        utils.save(instance)
+        instance.save()
 
 # Camera specific hooks
 @disable_other_hooks

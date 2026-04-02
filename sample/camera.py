@@ -1,4 +1,3 @@
-import json
 import math
 import numpy as np
 
@@ -37,13 +36,9 @@ class Camera(BaseModel):
     image_width: P[int] = P('image_width', 'pixels', min_value=0)
     image_height: P[int] = P('image_height', 'pixels', min_value=0)
 
-    storage_path: PP = PP('storage_path')
-
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name=None):
+        super().__init__(name=name)
         self.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS = constants.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS
-
-        self.storage_path = utils.get_unique_path(constants.STANDARD_CAMERA_STORAGE_PATH)
 
     def calculate_fov(self):
         if utils.params_exist(self, ['focal_length', 'sensor_width']):
