@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import json
 
 from sample import constants, hooks, utils
@@ -17,7 +18,7 @@ class BaseModel:
     @hooks.disable_other_hooks
     def fill_initial_values(self, name):
         class_name = utils.unformalize_str(self.__class__.__name__)
-        storage_filename = f"{class_name}/{name}.json" if name is not None else f"{class_name}.json"
+        storage_filename = os.path.join(class_name, f"{name}.json") if name is not None else f"{class_name}.json"
 
         self.storage_path = utils.get_unique_path(os.path.join(constants.CONFIG_FOLDER, storage_filename))
         if name is not None:
@@ -28,6 +29,7 @@ class BaseModel:
         setattr(self, key, value)
 
     def save(self):
+        os.makedirs(os.path.dirname(getattr(self, 'storage_path')), exist_ok=True)
         values = self.to_dict(materialize=True)
         with open(getattr(self, 'storage_path'), 'w') as f:
             json.dump(values, f, indent=4)
@@ -62,7 +64,7 @@ class BaseModel:
         overview = self._parameter_descriptors()
         if materialize:
             for key in overview.keys():
-                direct = getattr(self, key) is None or isinstance(getattr(self, key), (int, float, str, list, dict, P))
+                direct = getattr(self, key) is None or isinstance(getattr(self, key), (int, float, str, list, dict, np.ndarray, P))
                 overview[key] = getattr(self, key) if direct else getattr(self, key).to_dict(materialize)
         return overview
     

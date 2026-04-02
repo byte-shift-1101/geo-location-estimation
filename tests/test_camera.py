@@ -1,41 +1,33 @@
 import os
+import numpy as np
 from sample import constants
 from sample.camera import Camera
 from sample.reference_frame import ReferenceFrame
 from sample.assembly import Assembly
 
 def main():
-    camera = Camera()
-    camera.storage_path = constants.STANDARD_CAMERA_STORAGE_PATH
-    camera.load()
-    print(camera)
+    camera = Camera("siyi_a8_mini")
+    camera.focal_length = 21.0
+    camera.sensor_width = 35.871388789465605
+    camera.sensor_height = 25.704851173919568
+    camera.horizontal_field_of_view = 81.0
+    camera.vertical_field_of_view = 62.93495402960169
+    camera.image_width = 1920
+    camera.image_height = 1080
 
-    ref = ReferenceFrame()
-    ref.storage_path = os.path.join(constants.STANDARD_REFERENCE_FRAME_FOLDER, "drone_reference_frame.json")
-    ref.load()
-    print(ref)
+    ref = ReferenceFrame("drone")
+    ref.position = [1.0, 2.0, 3.0]
+    ref.orientation = [10.0, 20.0, 30.0]
 
-    world = ReferenceFrame()
-    world.storage_path = os.path.join(constants.STANDARD_REFERENCE_FRAME_FOLDER, "world_reference_frame.json")
-    world.load()
-    print(world)
+    world = ReferenceFrame("world")
+    world.position = [0.0, 0.0, 0.0]
+    world.orientation = [0.0, 0.0, 0.0]
 
-    assembly = Assembly("main")
-    assembly.storage_path = os.path.join(constants.STANDARD_ASSEMBLY_FOLDER, "main_assembly.json")
-    assembly.load()
-
+    assembly = Assembly("sihaag")
     assembly.camera = camera
     assembly.add_reference_frame(world)
     assembly.add_reference_frame(ref)
     print(assembly)
-
-    # to_dict = lambda instance: {key: value for key, value in vars(instance.__class__).items() if isinstance(value, Parameter) and not isinstance(value, PathParameter)}
-    # print(to_dict(camera))
-    # print(to_dict(ref))
-    # print(to_dict(world))
-    # print(to_dict(assembly))
-
-    # print(test(assembly))
 
 if __name__ == "__main__":
     main()
