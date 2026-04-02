@@ -3,11 +3,12 @@ import math
 import numpy as np
 
 from sample import hooks, constants, utils
+from sample.base_model import BaseModel
 from sample.parameter import Parameter as P, PathParameter as PP
 
 np.set_printoptions(precision=4, suppress=True)
 
-class Camera:
+class Camera(BaseModel):
     focal_length: P[float] = P('focal_length', 'millimeters', min_value=0, hooks=[
         hooks.hook_auto_calculate_fov,
         hooks.hook_auto_calculate_sensor_size,
@@ -39,8 +40,7 @@ class Camera:
     storage_path: PP = PP('storage_path')
 
     def __init__(self):
-        self.SKIP_HOOKS = False
-        self.UPDATE_JSON_ON_ATTRIBUTE_SET = constants.UPDATE_JSON_ON_ATTRIBUTE_SET
+        super().__init__()
         self.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS = constants.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS
 
         self.storage_path = utils.get_unique_path(constants.STANDARD_CAMERA_STORAGE_PATH)
@@ -89,11 +89,3 @@ class Camera:
         intrinsic_3x4 = self.intrinsic_matrix_3x4
         intrinsic_4x4 = np.vstack([intrinsic_3x4, [0, 0, 0, 1]])
         return intrinsic_4x4
-
-    def to_dict(self):
-        return {key: value for key, value in vars(Camera).items() if isinstance(value, P) and not isinstance(value, PP)}
-
-    def __str__(self):
-        data = utils.to_str(self)
-        data += f"\nStored at: {self.storage_path}"
-        return data

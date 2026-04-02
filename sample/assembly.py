@@ -2,11 +2,12 @@ import os
 import numpy as np
 
 from sample import constants, utils
+from sample.base_model import BaseModel
 from sample.parameter import Parameter as P, PathParameter as PP
 from sample.camera import Camera
 from sample.reference_frame import ReferenceFrame
 
-class Assembly:
+class Assembly(BaseModel):
     name: P[str] = P('name', None)
     camera: P[Camera] = P('camera', None)
     referenceFrames: P[list[ReferenceFrame]] = P('referenceFrames', [])
@@ -14,15 +15,14 @@ class Assembly:
     storage_path: PP = PP('storage_path')
 
     def __init__(self, name=None):
-        self.SKIP_HOOKS = False
-        self.UPDATE_JSON_ON_ATTRIBUTE_SET = constants.UPDATE_JSON_ON_ATTRIBUTE_SET
+        super().__init__()
         self.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS = constants.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS
         self.AUTO_ASSIGN_PARENT_FRAME = constants.AUTO_ASSIGN_PARENT_FRAME
 
-        # if name is not None:
-        #     self.name = name
         storage_filename = f"{name}_assembly.json" if name is not None else "assembly.json"
         self.storage_path = utils.get_unique_path(os.path.join(constants.STANDARD_ASSEMBLY_FOLDER, storage_filename))
+        if name is not None:
+            self.name = name
 
     def add_reference_frame(self, reference_frame):
         if self.referenceFrames is None:
@@ -51,11 +51,3 @@ class Assembly:
         pixel_y = pixel_coords_homogeneous[1] / pixel_coords_homogeneous[2]
 
         return (pixel_x, pixel_y)
-
-    def to_dict(self):
-        return {key: value for key, value in vars(Assembly).items() if isinstance(value, P) and not isinstance(value, PP)}
-        
-    def __str__(self):
-        data = utils.to_str(self)
-        data += f"\nStored at: {self.storage_path}"
-        return data

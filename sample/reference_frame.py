@@ -3,9 +3,10 @@ from numpy import typing as npt
 import os
 
 from sample import utils, constants
+from sample.base_model import BaseModel
 from sample.parameter import Parameter as P, PathParameter as PP
 
-class ReferenceFrame:
+class ReferenceFrame(BaseModel):
     name: P[str] = P('name', None)
     position: P[npt.NDArray[np.float64]] = P('position', 'meters', strict_length=3)
     orientation: P[npt.NDArray[np.float64]] = P('orientation', 'degrees', min_value=0, max_value=360, strict_length=3)
@@ -14,14 +15,13 @@ class ReferenceFrame:
     storage_path: PP = PP('storage_path')
 
     def __init__(self, name=None):
-        self.SKIP_HOOKS = False
-        self.UPDATE_JSON_ON_ATTRIBUTE_SET = constants.UPDATE_JSON_ON_ATTRIBUTE_SET
+        super().__init__()
         self.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS = constants.AUTO_CALCULATE_ATTRIBUTES_FROM_OTHERS
 
-        # if name is not None:
-        #     self.name = name
         storage_filename = f"{name}_reference_frame.json" if name is not None else "reference_frame.json"
         self.storage_path = utils.get_unique_path(os.path.join(constants.STANDARD_REFERENCE_FRAME_FOLDER, storage_filename))
+        if name is not None:
+            self.name = name
 
     @property
     def conversion_matrix_from_parent_4x4(self):
@@ -76,11 +76,3 @@ class ReferenceFrame:
         C[:3, 3] = self.position
 
         return C
-
-    def to_dict(self):
-        return {key: value for key, value in vars(ReferenceFrame).items() if isinstance(value, P) and not isinstance(value, PP)}
-    
-    def __str__(self):
-        data = utils.to_str(self)
-        data += f"\nStored at: {self.storage_path}"
-        return data

@@ -26,17 +26,8 @@ def is_array(instance):
 def save(instance):
     if instance is None:
         raise ValueError("Cannot save data from None instance.")
-    
-    values = materialize_dict(instance)
-    # data = instance.to_dict()
-    # print(f"Saving {instance.__class__.__name__} to {getattr(instance, 'storage_path')} with data: {data}")
-    # for key in data.keys():
-    #     direct = getattr(instance, key).__class__.__name__ == 'Parameter' or getattr(instance, key) is None
-    #     print(f"Attribute {key}: {getattr(instance, key)} (Direct?: {direct})")
-    #     if not direct:
-    #         print(f"Nested data for {key}: {getattr(instance, key).to_dict()}")
-    # values = {key: (getattr(instance, key) if (getattr(instance, key) is None or getattr(instance, key).__class__.__name__ == 'Parameter') else getattr(instance, key).to_dict()) for key in data.keys()}
-    # print(f"Values to save: {values}")
+
+    values = instance.to_dict(materialize=True)
     with open(getattr(instance, 'storage_path'), 'w') as f:
         json.dump(values, f, indent=4)
 
@@ -60,26 +51,3 @@ def load(instance):
     for field in fields:
         setattr(instance, field, None)
     setattr(instance, 'SKIP_HOOKS', False)
-
-def materialize_dict(instance):
-    filled = {}
-    data = instance.to_dict()
-    for key in data.keys():
-        trivial_value = getattr(instance, key) is None or getattr(instance, key).__class__.__name__ == 'Parameter' or isinstance(getattr(instance, key), (int, float, str, list, dict))
-        filled[key] = getattr(instance, key) if trivial_value else materialize_dict(getattr(instance, key))
-    return filled
-
-def to_str(instance):
-    summary = ""
-    data = instance.to_dict()
-    for key, value in data.items():
-        if (not getattr(instance, key) is None and getattr(instance, key).__class__.__name__ != 'Parameter' and not isinstance(getattr(instance, key), float) and not isinstance(getattr(instance, key), int) and not isinstance(getattr(instance, key), str) and not isinstance(getattr(instance, key), list) and not isinstance(getattr(instance, key), dict)):
-            details = to_str(getattr(instance, key)).split("\n")
-            summary += "\n".join(list(map(lambda x: f"\t{x}", details)))
-        else:
-            summary += f"\t{value.name}: {getattr(instance, key)}"
-            if value.unit is not None:
-                summary += f" {value.unit}"
-            summary += "\n"
-
-    return f"{instance.__class__.__name__}\n{summary}"
