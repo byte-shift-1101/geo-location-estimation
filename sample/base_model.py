@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import json
+from typing import get_args, get_origin, get_type_hints
 
 from sample import constants, hooks, utils
 from sample.parameter import Parameter as P, PathParameter as PP
@@ -30,7 +31,7 @@ class BaseModel:
 
     def save(self):
         os.makedirs(os.path.dirname(getattr(self, 'storage_path')), exist_ok=True)
-        values = self.to_dict(materialize=True)
+        values = self._jsonify_value(self.to_dict(materialize=True))
         with open(getattr(self, 'storage_path'), 'w') as f:
             json.dump(values, f, indent=4)
 
@@ -44,13 +45,22 @@ class BaseModel:
             if not hasattr(self, key):
                 raise ValueError(f"Cannot load data. {self.__class__.__name__} has no attribute '{key}'.")
 
-            setattr(self, key, value)
+            setattr(self, key, utils.coerce_value(self, key, value))
             if key in fields:
                 fields.remove(key)
 
         for field in fields:
             setattr(self, field, None)
         setattr(self, 'SKIP_HOOKS', False)
+
+    def _jsonify_value(self, value):
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        if isinstance(value, dict):
+            return {key: self._jsonify_value(inner_value) for key, inner_value in value.items()}
+        if isinstance(value, list):
+            return [self._jsonify_value(item) for item in value]
+        return value
 
     def _parameter_descriptors(self):
         descriptors = {}

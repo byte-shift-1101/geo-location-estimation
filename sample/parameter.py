@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import overload, TypeVar, Generic
+from typing import overload, TypeVar, Generic, get_args, get_type_hints
+import numpy as np
 from sample import hooks, utils
 
 T = TypeVar('T')
@@ -18,6 +19,11 @@ class Parameter(Generic[T]):
         self.max_value = max_value
         self.strict_length = strict_length
         self.hooks = hooks or []
+        self.owner = None
+
+    def __set_name__(self, owner, name):
+        self.owner = owner
+        self.attr_name = name
 
     def _validate(self, value):
         if value is None:
@@ -53,6 +59,7 @@ class Parameter(Generic[T]):
 
     def __set__(self, instance, value):
         self._validate(value)
+        value = utils.coerce_value(instance, self.key, value)
         setattr(instance, f"_{self.key}", value)
 
         if getattr(instance, 'SKIP_HOOKS', False):

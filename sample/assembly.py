@@ -90,8 +90,7 @@ class Assembly(BaseModel):
         for rf in self.reference_frames:
             point_homogeneous = rf.conversion_matrix_from_parent_4x4 @ point_homogeneous
 
-        intrinsic_matrix = self.camera.intrinsic_matrix_4x4
-        pixel_coords_homogeneous = intrinsic_matrix @ point_homogeneous
+        pixel_coords_homogeneous = self.camera.intrinsic_matrix_4x4 @ point_homogeneous
         pixel_x = pixel_coords_homogeneous[0] / pixel_coords_homogeneous[2]
         pixel_y = pixel_coords_homogeneous[1] / pixel_coords_homogeneous[2]
 
