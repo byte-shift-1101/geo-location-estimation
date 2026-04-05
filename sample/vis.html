@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera System Visualizer</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #181c27;
+    --panel2: #1e2334;
+    --border: #2a3045;
+    --accent: #4f8ef7;
+    --accent2: #f7a24f;
+    --green: #4fcf8a;
+    --red: #f74f6a;
+    --text: #d4daf0;
+    --muted: #6b7599;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    --sans: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); }
+
+  #app { display: grid; grid-template-rows: 42px 1fr; height: 100vh; }
+
+  #topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--muted);
+  }
+  #topbar .logo { font-family: var(--mono); font-size: 13px; color: var(--text); letter-spacing: 0.05em; }
+  #topbar .logo span { color: var(--accent); }
+  #topbar .sep { width: 1px; height: 20px; background: var(--border); }
+  #topbar select, #topbar input[type=number] {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 3px 7px; border-radius: 4px; font-size: 11px; font-family: var(--mono);
+  }
+  #topbar label { color: var(--muted); font-size: 11px; }
+  .topbar-group { display: flex; align-items: center; gap: 6px; }
+
+  #main { display: grid; grid-template-columns: 280px 1fr; overflow: hidden; }
+
+  #sidebar {
+    background: var(--panel); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .stab {
+    flex: 1; padding: 8px 0; font-size: 11px; text-align: center; cursor: pointer;
+    color: var(--muted); border: none; background: transparent; font-family: var(--sans);
+    border-bottom: 2px solid transparent; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .stab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .sidebar-panel { display: none; flex: 1; overflow-y: auto; padding: 12px; flex-direction: column; gap: 10px; }
+  .sidebar-panel.active { display: flex; }
+
+  .panel-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    font-family: var(--mono); font-size: 11px; padding: 8px; border-radius: 4px;
+    resize: vertical; min-height: 120px; line-height: 1.5;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  button.btn {
+    padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--panel2); color: var(--text); cursor: pointer; font-size: 11px;
+    font-family: var(--sans); transition: border-color 0.15s;
+  }
+  button.btn:hover { border-color: var(--accent); color: var(--accent); }
+  button.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.btn.primary:hover { background: #6fa3f9; }
+  button.btn.danger { border-color: var(--red); color: var(--red); }
+  button.btn.danger:hover { background: #2a1520; }
+
+  .frame-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px;
+  }
+  .frame-card .fc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .frame-card .fc-name { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .frame-card .fc-parent { font-size: 10px; color: var(--muted); }
+  .frame-card .fc-vals { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+  .frame-card .fc-val { text-align: center; }
+  .frame-card .fc-val span { display: block; font-size: 9px; color: var(--muted); }
+  .frame-card .fc-val input {
+    width: 100%; background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    font-family: var(--mono); font-size: 11px; padding: 3px 5px; border-radius: 3px; text-align: center;
+  }
+  .frame-card .fc-val input:focus { outline: none; border-color: var(--accent); }
+
+  .cam-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-top: 4px; }
+  .cam-field { display: flex; flex-direction: column; gap: 2px; }
+  .cam-field label { font-size: 9px; color: var(--muted); }
+  .cam-field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    font-family: var(--mono); font-size: 11px; padding: 3px 5px; border-radius: 3px;
+  }
+  .cam-field input:focus { outline: none; border-color: var(--accent2); }
+
+  .pt-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+  .pt-label { font-family: var(--mono); font-size: 11px; width: 22px; color: var(--accent2); text-align: center; }
+  .pt-row input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    font-family: var(--mono); font-size: 11px; padding: 3px 5px; border-radius: 3px; text-align: center;
+  }
+  .pt-row input:focus { outline: none; border-color: var(--accent2); }
+  .pt-del { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 3px; }
+  .pt-del:hover { color: var(--red); }
+  .pt-copy { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 11px; padding: 0 4px; }
+  .pt-copy:hover { color: var(--accent2); }
+
+  #viewports {
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 0.9fr;
+    gap: 2px; background: var(--border); overflow: hidden;
+  }
+  .vp {
+    background: var(--bg); position: relative; overflow: hidden;
+  }
+  .vp canvas { display: block; }
+  .vp-label {
+    position: absolute; top: 8px; left: 10px; font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); font-family: var(--mono); pointer-events: none;
+  }
+  .vp-hint { position: absolute; bottom: 8px; right: 10px; font-size: 9px; color: var(--border); font-family: var(--mono); }
+
+  .proj-status {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--panel); border-top: 1px solid var(--border);
+    display: flex; overflow-x: auto; padding: 4px 8px; gap: 12px; align-items: center;
+  }
+  .proj-chip {
+    display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px;
+    white-space: nowrap; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--border);
+  }
+  .proj-chip .chip-label { color: var(--accent2); }
+  .proj-chip .chip-ok { color: var(--green); }
+  .proj-chip .chip-behind { color: var(--muted); }
+  .proj-chip .chip-off { color: var(--red); }
+
+  .info-bar {
+    position: absolute; top: 8px; right: 10px; font-family: var(--mono); font-size: 10px;
+    color: var(--muted); line-height: 1.6; text-align: right;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .tag-badge {
+    font-size: 9px; padding: 2px 6px; border-radius: 3px; font-family: var(--mono);
+    background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  }
+  select {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 3px 6px; border-radius: 3px; font-size: 11px; font-family: var(--mono);
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="logo">CAM<span>VIZ</span></div>
+    <div class="sep"></div>
+    <div class="topbar-group">
+      <label>Euler order</label>
+      <select id="euler-order" onchange="rerender()">
+        <option value="ZYX">ZYX (yaw→pitch→roll)</option>
+        <option value="XYZ">XYZ (roll→pitch→yaw)</option>
+        <option value="YXZ">YXZ (pitch→roll→yaw)</option>
+      </select>
+    </div>
+    <div class="sep"></div>
+    <div class="topbar-group">
+      <label>orientation[]</label>
+      <select id="euler-labels" onchange="rerender()">
+        <option value="RPY">[roll, pitch, yaw]</option>
+        <option value="YPR">[yaw, pitch, roll]</option>
+      </select>
+    </div>
+    <div class="sep"></div>
+    <div class="topbar-group">
+      <label>Cam looks</label>
+      <select id="cam-axis" onchange="rerender()">
+        <option value="-Z">-Z axis</option>
+        <option value="+Z">+Z axis</option>
+        <option value="-X">-X axis</option>
+        <option value="+X">+X axis</option>
+      </select>
+    </div>
+    <div style="flex:1"></div>
+    <div id="cam-world-pos" style="font-family:var(--mono);font-size:10px;color:var(--muted);">cam @ world: —</div>
+  </div>
+
+  <div id="main">
+    <div id="sidebar">
+      <div class="sidebar-tabs">
+        <button class="stab active" onclick="showTab('frames')">Frames</button>
+        <button class="stab" onclick="showTab('camera')">Camera</button>
+        <button class="stab" onclick="showTab('points')">Points</button>
+      </div>
+
+      <!-- FRAMES TAB -->
+      <div class="sidebar-panel active" id="tab-frames">
+        <div>
+          <div class="panel-label">Paste frame JSON</div>
+          <textarea id="frame-json" placeholder='{"name":"drone","position":[1,2,3],"orientation":[0,0,0],"parent_frame":"world"}'></textarea>
+          <button class="btn primary" style="width:100%;margin-top:6px" onclick="loadFrameJSON()">Load Frame</button>
+        </div>
+        <div id="frames-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <!-- CAMERA TAB -->
+      <div class="sidebar-panel" id="tab-camera">
+        <div>
+          <div class="section-head">
+            <div class="panel-label">Camera intrinsics</div>
+          </div>
+          <div class="cam-row">
+            <div class="cam-field"><label>FOV Y (°)</label><input type="number" id="cam-fov" value="60" step="5" oninput="rerender()"></div>
+            <div class="cam-field"><label>Width (px)</label><input type="number" id="cam-w" value="1920" step="10" oninput="rerender()"></div>
+            <div class="cam-field"><label>Height (px)</label><input type="number" id="cam-h" value="1080" step="10" oninput="rerender()"></div>
+          </div>
+          <div class="cam-row" style="margin-top:6px">
+            <div class="cam-field"><label>Focal len (mm)</label><input type="number" id="cam-fl" value="" step="0.1" oninput="rerender()"></div>
+            <div class="cam-field"><label>Sensor W (mm)</label><input type="number" id="cam-sw" value="" step="0.1" oninput="rerender()"></div>
+            <div class="cam-field"><label>Sensor H (mm)</label><input type="number" id="cam-sh" value="" step="0.1" oninput="rerender()"></div>
+          </div>
+          <div class="cam-row" style="margin-top:6px">
+            <div class="cam-field"><label>FOV X (°)</label><input type="number" id="cam-hfov" value="" step="0.1" oninput="rerender()"></div>
+            <div class="cam-field"><label>FOV Y cfg (°)</label><input type="number" id="cam-vfov" value="" step="0.1" oninput="rerender()"></div>
+            <div class="cam-field"><label>Camera name</label><input type="text" id="cam-name" value="" placeholder="siyi_a8_mini" oninput="rerender()"></div>
+          </div>
+          <div style="margin-top:8px">
+            <div class="panel-label">reference_frame_path</div>
+            <input type="text" id="cam-ref-path" placeholder="configs\\referenceframe\\camera.json" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 7px;border-radius:3px" oninput="rerender()">
+          </div>
+        </div>
+        <div>
+          <div class="section-head">
+            <div class="panel-label">Camera extrinsics (relative to parent)</div>
+          </div>
+          <div class="cam-row">
+            <div class="cam-field"><label>pos X</label><input type="number" id="camp-x" value="0" step="0.1" oninput="rerender()"></div>
+            <div class="cam-field"><label>pos Y</label><input type="number" id="camp-y" value="0" step="0.1" oninput="rerender()"></div>
+            <div class="cam-field"><label>pos Z</label><input type="number" id="camp-z" value="0" step="0.1" oninput="rerender()"></div>
+          </div>
+          <div class="cam-row" style="margin-top:6px">
+            <div class="cam-field"><label>rot [0] (°)</label><input type="number" id="camr-0" value="0" step="5" oninput="rerender()"></div>
+            <div class="cam-field"><label>rot [1] (°)</label><input type="number" id="camr-1" value="0" step="5" oninput="rerender()"></div>
+            <div class="cam-field"><label>rot [2] (°)</label><input type="number" id="camr-2" value="0" step="5" oninput="rerender()"></div>
+          </div>
+          <div style="margin-top:8px">
+            <div class="panel-label">Parent frame</div>
+            <select id="cam-parent" style="width:100%;margin-top:4px" onchange="rerender()">
+              <option value="world">world</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="panel-label">Load from JSON (paste siyi_a8_mini.json or similar)</div>
+          <textarea id="cam-json" placeholder='{"name":"siyi_a8_mini","focal_length":21,"sensor_width":35.87,"sensor_height":25.70,"horizontal_field_of_view":81,"vertical_field_of_view":62.93,"image_width":1920,"image_height":1080,"reference_frame_path":"configs\\referenceframe\\camera.json"}' style="min-height:90px"></textarea>
+          <button class="btn primary" style="width:100%;margin-top:6px" onclick="loadCamJSON()">Apply Camera JSON</button>
+        </div>
+      </div>
+
+      <!-- POINTS TAB -->
+      <div class="sidebar-panel" id="tab-points">
+        <div class="section-head">
+          <div class="panel-label">World-space test points</div>
+          <button class="btn" onclick="addPoint()">+ Add</button>
+        </div>
+        <div id="points-list" style="display:flex;flex-direction:column"></div>
+        <div style="margin-top:10px">
+          <div class="panel-label" style="margin-bottom:6px">Paste copied points JSON</div>
+          <textarea id="points-json" placeholder='[{"label":"A","position":[1,2,3]}]' style="min-height:90px"></textarea>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px">
+            <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px">
+              <input type="checkbox" id="points-replace"> Replace existing points
+            </label>
+            <button class="btn" onclick="pastePointsJSON()">Import points</button>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="panel-label" style="margin-bottom:6px">Random points in camera view</div>
+          <div class="cam-row">
+            <div class="cam-field"><label>Count</label><input type="number" id="rand-count" value="24" min="1" step="1"></div>
+            <div class="cam-field"><label>Min dist</label><input type="number" id="rand-min-dist" value="2" min="0.01" step="0.1"></div>
+            <div class="cam-field"><label>Max dist</label><input type="number" id="rand-max-dist" value="80" min="0.02" step="0.1"></div>
+          </div>
+          <button class="btn primary" style="width:100%;margin-top:6px" onclick="addRandomCameraPoints()">Generate Random Camera Points</button>
+        </div>
+        <div style="margin-top:auto;padding-top:10px">
+          <div class="panel-label" style="margin-bottom:6px">Quick add presets</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+            <button class="btn" onclick="addOrigin()">Origin (0,0,0)</button>
+            <button class="btn" onclick="addAxisPoints()">±Axis pts</button>
+            <button class="btn" onclick="addGrid()">4×4 Grid XZ</button>
+            <button class="btn" onclick="copyAllPts()">Copy all points</button>
+            <button class="btn btn danger" onclick="clearPoints()">Clear all</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewports">
+      <div class="vp" id="vp-top">
+        <canvas id="c-top"></canvas>
+        <div class="vp-label">Top (X→, Z↓)</div>
+        <div class="vp-hint">scroll: zoom · drag: pan</div>
+      </div>
+      <div class="vp" id="vp-front">
+        <canvas id="c-front"></canvas>
+        <div class="vp-label">Front (X→, Y↑)</div>
+        <div class="vp-hint">scroll: zoom · drag: pan</div>
+      </div>
+      <div class="vp" id="vp-cam">
+        <canvas id="c-cam"></canvas>
+        <div class="vp-label">Camera view</div>
+        <div id="cam-info" class="info-bar"></div>
+        <div class="proj-status" id="proj-status"></div>
+      </div>
+      <div class="vp" id="vp-side">
+        <canvas id="c-side"></canvas>
+        <div class="vp-label">Side (Z→, Y↑)</div>
+        <div class="vp-hint">scroll: zoom · drag: pan</div>
+      </div>
+      <div class="vp" id="vp-3d" style="grid-column:1 / span 2;">
+        <canvas id="c-3d"></canvas>
+        <div class="vp-label">3D Orbit View</div>
+        <div class="vp-hint">drag: orbit · shift+drag/right-drag: pan · scroll: zoom</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Math utils ───────────────────────────────────────────────────────────────
+const v3 = (x,y,z) => [x,y,z];
+const v3Add = (a,b) => [a[0]+b[0], a[1]+b[1], a[2]+b[2]];
+const v3Sub = (a,b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+const v3Scale = (a,s) => [a[0]*s, a[1]*s, a[2]*s];
+const v3Dot = (a,b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const v3Len = a => Math.sqrt(v3Dot(a,a));
+const v3Norm = a => { const l=v3Len(a); return l<1e-9?[0,0,0]:[a[0]/l,a[1]/l,a[2]/l]; };
+const v3Cross = (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+
+function m3Id() { return [[1,0,0],[0,1,0],[0,0,1]]; }
+function m3Mul(A,B) {
+  const C=[[0,0,0],[0,0,0],[0,0,0]];
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++) for(let k=0;k<3;k++) C[i][j]+=A[i][k]*B[k][j];
+  return C;
+}
+function m3MulV(M,v) { return [M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2], M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2], M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]]; }
+function m3T(M) { return [[M[0][0],M[1][0],M[2][0]],[M[0][1],M[1][1],M[2][1]],[M[0][2],M[1][2],M[2][2]]]; }
+function Rx(a) { const c=Math.cos(a),s=Math.sin(a); return [[1,0,0],[0,c,-s],[0,s,c]]; }
+function Ry(a) { const c=Math.cos(a),s=Math.sin(a); return [[c,0,s],[0,1,0],[-s,0,c]]; }
+function Rz(a) { const c=Math.cos(a),s=Math.sin(a); return [[c,-s,0],[s,c,0],[0,0,1]]; }
+function d2r(d) { return d * Math.PI / 180; }
+
+function eulerToMat(ori) {
+  const order = document.getElementById('euler-order').value;
+  const labels = document.getElementById('euler-labels').value;
+  let r, p, y;
+  if (labels === 'RPY') { r=ori[0]; p=ori[1]; y=ori[2]; }
+  else { y=ori[0]; p=ori[1]; r=ori[2]; }
+  const Rx_ = Rx(d2r(r)), Ry_ = Ry(d2r(p)), Rz_ = Rz(d2r(y));
+  if (order==='ZYX') return m3Mul(Rz_, m3Mul(Ry_, Rx_));
+  if (order==='XYZ') return m3Mul(Rx_, m3Mul(Ry_, Rz_));
+  if (order==='YXZ') return m3Mul(Ry_, m3Mul(Rx_, Rz_));
+  return m3Id();
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const frames = {
+  world: { name:'world', position:[0,0,0], orientation:[0,0,0], parent_frame:null }
+};
+
+let testPoints = [
+  { label:'A', pos:[0,0,0] },
+  { label:'B', pos:[1,0,0] },
+  { label:'C', pos:[0,1,0] },
+  { label:'D', pos:[0,0,-3] },
+];
+
+const POINTS_STORAGE_KEY = 'camviz.points.v1';
+const DEFAULT_TEST_POINTS = testPoints.map(pt => ({ label: pt.label, pos: [...pt.pos] }));
+
+let pointCounter = 5;
+
+// viewport pan/zoom state
+const vpState = {
+  top:   { ox:0, oy:0, scale:60, dragging:false, mx:0, my:0 },
+  front: { ox:0, oy:0, scale:60, dragging:false, mx:0, my:0 },
+  side:  { ox:0, oy:0, scale:60, dragging:false, mx:0, my:0 },
+};
+
+const vp3D = {
+  yaw: -0.8,
+  pitch: 0.45,
+  dist: 18,
+  target: [0, 0, 0],
+  dragging: false,
+  panMode: false,
+  mx: 0,
+  my: 0,
+};
+
+// ─── Frame transforms ─────────────────────────────────────────────────────────
+function getWorldTransform(name) {
+  if (!name || name==='world') return { pos:[0,0,0], rot:m3Id() };
+  const f = frames[name];
+  if (!f) return { pos:[0,0,0], rot:m3Id() };
+  const parent = getWorldTransform(f.parent_frame);
+  const localRot = eulerToMat(f.orientation);
+  return {
+    pos: v3Add(parent.pos, m3MulV(parent.rot, f.position)),
+    rot: m3Mul(parent.rot, localRot)
+  };
+}
+
+function getCameraTransform() {
+  const px = parseFloat(document.getElementById('camp-x').value)||0;
+  const py = parseFloat(document.getElementById('camp-y').value)||0;
+  const pz = parseFloat(document.getElementById('camp-z').value)||0;
+  const r0 = parseFloat(document.getElementById('camr-0').value)||0;
+  const r1 = parseFloat(document.getElementById('camr-1').value)||0;
+  const r2 = parseFloat(document.getElementById('camr-2').value)||0;
+  const parentName = document.getElementById('cam-parent').value;
+
+  const parent = getWorldTransform(parentName);
+  const localRot = eulerToMat([r0,r1,r2]);
+  return {
+    pos: v3Add(parent.pos, m3MulV(parent.rot, [px,py,pz])),
+    rot: m3Mul(parent.rot, localRot)
+  };
+}
+
+function getCameraFwd() {
+  const ax = document.getElementById('cam-axis').value;
+  const camT = getCameraTransform();
+  const local = ax==='-Z'?[0,0,-1]:ax==='+Z'?[0,0,1]:ax==='-X'?[-1,0,0]:[1,0,0];
+  return m3MulV(camT.rot, local);
+}
+
+function r2d(r) { return r * 180 / Math.PI; }
+function readNum(id) {
+  const v = parseFloat(document.getElementById(id).value);
+  return Number.isFinite(v) ? v : null;
+}
+function writeValue(id, value) {
+  if (value === null || value === undefined) return;
+  document.getElementById(id).value = value;
+}
+function inferFrameNameFromPath(pathValue) {
+  if (!pathValue || typeof pathValue !== 'string') return null;
+  const parts = pathValue.replace(/\\/g, '/').split('/');
+  const fileName = parts[parts.length - 1] || '';
+  const stem = fileName.replace(/\.[^/.]+$/, '');
+  return stem || null;
+}
+
+function getCameraIntrinsics() {
+  const W = Math.max(1, readNum('cam-w') || 1920);
+  const H = Math.max(1, readNum('cam-h') || 1080);
+  const fl = readNum('cam-fl');
+  const sw = readNum('cam-sw');
+  const sh = readNum('cam-sh');
+  const hFovCfg = readNum('cam-hfov');
+  const vFovCfg = readNum('cam-vfov');
+  let fovY = readNum('cam-fov');
+  let source = 'cam-fov';
+
+  if (vFovCfg && vFovCfg > 0) {
+    fovY = vFovCfg;
+    source = 'vertical_field_of_view';
+  } else if (fl && sh && fl > 0 && sh > 0) {
+    fovY = r2d(2 * Math.atan(sh / (2 * fl)));
+    source = 'focal_length+sensor_height';
+  } else if (hFovCfg && hFovCfg > 0) {
+    const aspect = W / H;
+    fovY = r2d(2 * Math.atan(Math.tan(d2r(hFovCfg) / 2) / aspect));
+    source = 'horizontal_field_of_view+aspect';
+  }
+
+  if (!fovY || fovY <= 0) {
+    fovY = 60;
+    source = 'fallback-default';
+  }
+
+  const aspect = W / H;
+  const fovX = r2d(2 * Math.atan(Math.tan(d2r(fovY) / 2) * aspect));
+  return { W, H, fovY, fovX, fl, sw, sh, source };
+}
+
+function projectPoint(wpt) {
+  const camT = getCameraTransform();
+  const intr = getCameraIntrinsics();
+  const fovY = intr.fovY;
+  const W = intr.W;
+  const H = intr.H;
+  const ax = document.getElementById('cam-axis').value;
+
+  const diff = v3Sub(wpt, camT.pos);
+  const RT = m3T(camT.rot);
+  let camPt = m3MulV(RT, diff);
+
+  // Map so camera looks down -Z regardless of chosen axis
+  if (ax==='+Z') camPt = [camPt[0], camPt[1], -camPt[2]];
+  else if (ax==='-X') camPt = [-camPt[2], camPt[1], camPt[0]];
+  else if (ax==='+X') camPt = [camPt[2], camPt[1], -camPt[0]];
+
+  if (camPt[2] >= 0) return { status:'behind', camPt };
+  const f = 1 / Math.tan(d2r(fovY)/2);
+  const aspect = W / H;
+  const xNdc = (camPt[0] / -camPt[2]) * f / aspect;
+  const yNdc = (camPt[1] / -camPt[2]) * f;
+  const xScr = (xNdc+1)/2*W;
+  const yScr = (1-yNdc)/2*H;
+  const onscreen = xNdc>=-1&&xNdc<=1&&yNdc>=-1&&yNdc<=1;
+  return { status: onscreen?'ok':'offscreen', camPt, xNdc, yNdc, xScr, yScr };
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sidebar-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function loadFrameJSON() {
+  try {
+    const obj = JSON.parse(document.getElementById('frame-json').value);
+    if (!obj.name) return alert('Missing "name" field');
+    frames[obj.name] = {
+      name: obj.name,
+      position: obj.position||[0,0,0],
+      orientation: obj.orientation||[0,0,0],
+      parent_frame: obj.parent_frame||'world'
+    };
+    document.getElementById('frame-json').value = '';
+    renderFramesList();
+    updateCamParentSelect();
+    rerender();
+  } catch(e) { alert('Invalid JSON: '+e.message); }
+}
+
+function loadCamJSON() {
+  try {
+    const obj = JSON.parse(document.getElementById('cam-json').value);
+    if (obj.name) writeValue('cam-name', obj.name);
+    if (obj.focal_length !== undefined) writeValue('cam-fl', obj.focal_length);
+    if (obj.sensor_width !== undefined) writeValue('cam-sw', obj.sensor_width);
+    if (obj.sensor_height !== undefined) writeValue('cam-sh', obj.sensor_height);
+    if (obj.horizontal_field_of_view !== undefined) writeValue('cam-hfov', obj.horizontal_field_of_view);
+    if (obj.vertical_field_of_view !== undefined) writeValue('cam-vfov', obj.vertical_field_of_view);
+    if (obj.reference_frame_path) writeValue('cam-ref-path', obj.reference_frame_path);
+
+    if (obj.position) {
+      document.getElementById('camp-x').value = obj.position[0]||0;
+      document.getElementById('camp-y').value = obj.position[1]||0;
+      document.getElementById('camp-z').value = obj.position[2]||0;
+    }
+    if (obj.orientation) {
+      document.getElementById('camr-0').value = obj.orientation[0]||0;
+      document.getElementById('camr-1').value = obj.orientation[1]||0;
+      document.getElementById('camr-2').value = obj.orientation[2]||0;
+    }
+    if (obj.fov_y !== undefined) document.getElementById('cam-fov').value = obj.fov_y;
+    if (obj.vertical_field_of_view !== undefined) document.getElementById('cam-fov').value = obj.vertical_field_of_view;
+    if (obj.width !== undefined) document.getElementById('cam-w').value = obj.width;
+    if (obj.height !== undefined) document.getElementById('cam-h').value = obj.height;
+    if (obj.image_width !== undefined) document.getElementById('cam-w').value = obj.image_width;
+    if (obj.image_height !== undefined) document.getElementById('cam-h').value = obj.image_height;
+
+    if (obj.reference_frame && typeof obj.reference_frame === 'object') {
+      const inferred = inferFrameNameFromPath(obj.reference_frame_path);
+      const frameName = obj.reference_frame.name || inferred || `${obj.name || 'camera'}_frame`;
+      frames[frameName] = {
+        name: frameName,
+        position: obj.reference_frame.position || [0,0,0],
+        orientation: obj.reference_frame.orientation || [0,0,0],
+        parent_frame: obj.reference_frame.parent_frame || 'world'
+      };
+      renderFramesList();
+      updateCamParentSelect();
+      document.getElementById('cam-parent').value = frameName;
+    } else if (obj.parent_frame) {
+      document.getElementById('cam-parent').value = obj.parent_frame;
+    } else if (obj.reference_frame_path) {
+      const inferred = inferFrameNameFromPath(obj.reference_frame_path);
+      if (inferred && frames[inferred]) {
+        document.getElementById('cam-parent').value = inferred;
+      }
+    }
+
+    rerender();
+  } catch(e) { alert('Invalid JSON: '+e.message); }
+}
+
+function renderFramesList() {
+  const list = document.getElementById('frames-list');
+  list.innerHTML = '';
+  Object.values(frames).forEach(f => {
+    const card = document.createElement('div');
+    card.className = 'frame-card';
+    const isWorld = f.name === 'world';
+    card.innerHTML = `
+      <div class="fc-head">
+        <div>
+          <div class="fc-name">${f.name}</div>
+          <div class="fc-parent">${isWorld ? 'root frame' : '↳ '+f.parent_frame}</div>
+        </div>
+        ${!isWorld ? `<button class="btn danger" onclick="deleteFrame('${f.name}')" style="padding:3px 8px;font-size:10px">×</button>` : ''}
+      </div>
+      <div class="fc-vals" style="margin-bottom:6px">
+        ${['X','Y','Z'].map((ax,i)=>`<div class="fc-val"><span>pos ${ax}</span><input type="number" value="${f.position[i]}" step="0.1" ${isWorld?'disabled':''} onchange="updateFramePos('${f.name}',${i},this.value)"></div>`).join('')}
+      </div>
+      <div class="fc-vals">
+        ${['[0]','[1]','[2]'].map((ax,i)=>`<div class="fc-val"><span>ori ${ax}</span><input type="number" value="${f.orientation[i]}" step="5" ${isWorld?'disabled':''} onchange="updateFrameOri('${f.name}',${i},this.value)"></div>`).join('')}
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function updateFramePos(name, idx, val) { frames[name].position[idx]=parseFloat(val)||0; rerender(); }
+function updateFrameOri(name, idx, val) { frames[name].orientation[idx]=parseFloat(val)||0; rerender(); }
+function deleteFrame(name) { delete frames[name]; renderFramesList(); updateCamParentSelect(); rerender(); }
+
+function updateCamParentSelect() {
+  const sel = document.getElementById('cam-parent');
+  const cur = sel.value;
+  sel.innerHTML = Object.keys(frames).map(n=>`<option value="${n}" ${n===cur?'selected':''}>${n}</option>`).join('');
+}
+
+function getNextPointLabel() {
+  return String.fromCharCode(64+((pointCounter-1)%26+1));
+}
+
+function syncPointCounter() {
+  pointCounter = Math.max(1, testPoints.length + 1);
+}
+
+function savePointsToStorage() {
+  try {
+    const payload = testPoints.map(pt => ({ label: pt.label, position: pt.pos }));
+    localStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    // Ignore storage write errors.
+  }
+}
+
+function normalizeImportedPoints(items) {
+  const out = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item || typeof item !== 'object') continue;
+    const position = Array.isArray(item.position) ? item.position : (Array.isArray(item.pos) ? item.pos : null);
+    if (!position || position.length !== 3) continue;
+
+    const x = Number(position[0]);
+    const y = Number(position[1]);
+    const z = Number(position[2]);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+
+    const label = typeof item.label === 'string' && item.label.trim() ? item.label.trim() : getNextPointLabel();
+    out.push({ label, pos: [x, y, z] });
+  }
+  return out;
+}
+
+function loadPointsFromStorage() {
+  try {
+    const raw = localStorage.getItem(POINTS_STORAGE_KEY);
+    if (!raw) {
+      syncPointCounter();
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      syncPointCounter();
+      return;
+    }
+
+    const imported = normalizeImportedPoints(parsed);
+    if (imported.length > 0) testPoints = imported;
+    else testPoints = DEFAULT_TEST_POINTS.map(pt => ({ label: pt.label, pos: [...pt.pos] }));
+    syncPointCounter();
+  } catch (e) {
+    testPoints = DEFAULT_TEST_POINTS.map(pt => ({ label: pt.label, pos: [...pt.pos] }));
+    syncPointCounter();
+  }
+}
+
+function pastePointsJSON() {
+  const raw = document.getElementById('points-json').value;
+  if (!raw || !raw.trim()) {
+    alert('Paste point JSON first.');
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    alert('Invalid points JSON: ' + e.message);
+    return;
+  }
+
+  const list = Array.isArray(parsed) ? parsed : [parsed];
+  const imported = normalizeImportedPoints(list);
+  if (imported.length === 0) {
+    alert('No valid points found in pasted JSON.');
+    return;
+  }
+
+  const replaceExisting = !!document.getElementById('points-replace').checked;
+  if (replaceExisting) testPoints = imported;
+  else testPoints = testPoints.concat(imported);
+
+  syncPointCounter();
+  savePointsToStorage();
+  renderPointsList();
+  rerender();
+}
+
+function addPoint(x=0,y=0,z=0) {
+  testPoints.push({ label: getNextPointLabel(), pos:[x,y,z] });
+  pointCounter++;
+  savePointsToStorage();
+  renderPointsList();
+  rerender();
+}
+function addOrigin() { addPoint(0,0,0); }
+function addAxisPoints() {
+  [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,-1],[0,0,1]].forEach(p=>addPoint(...p));
+}
+function addGrid() {
+  for(let x=-1.5;x<=1.5;x++) for(let z=-1.5;z<=1.5;z++) addPoint(x,0,z);
+}
+function clearPoints() { testPoints=[]; pointCounter=1; savePointsToStorage(); renderPointsList(); rerender(); }
+
+function canonicalToAxisCamera(canonicalPt, axis) {
+  const x = canonicalPt[0], y = canonicalPt[1], z = canonicalPt[2];
+  if (axis === '-Z') return [x, y, z];
+  if (axis === '+Z') return [x, y, -z];
+  if (axis === '-X') return [z, y, -x];
+  if (axis === '+X') return [-z, y, x];
+  return [x, y, z];
+}
+
+function addRandomCameraPoints() {
+  const count = Math.max(1, Math.floor(readNum('rand-count') || 1));
+  let minDist = readNum('rand-min-dist') || 2;
+  let maxDist = readNum('rand-max-dist') || 80;
+  if (minDist <= 0) minDist = 0.01;
+  if (maxDist <= minDist) maxDist = minDist + 0.01;
+
+  const camT = getCameraTransform();
+  const intr = getCameraIntrinsics();
+  const fovY = d2r(intr.fovY);
+  const fovX = d2r(intr.fovX);
+  const axis = document.getElementById('cam-axis').value;
+
+  // Stratified sampling keeps points spread across the full camera image.
+  const bins = Math.ceil(Math.sqrt(count));
+  let generated = 0;
+  for (let iy = 0; iy < bins && generated < count; iy++) {
+    for (let ix = 0; ix < bins && generated < count; ix++) {
+      const xNdc = ((ix + Math.random()) / bins) * 2 - 1;
+      const yNdc = ((iy + Math.random()) / bins) * 2 - 1;
+
+      // Sample depth on a log scale to keep both near and far points represented.
+      const t = Math.random();
+      const depth = minDist * Math.pow(maxDist / minDist, t);
+
+      const xCamCanonical = xNdc * depth * Math.tan(fovX / 2);
+      const yCamCanonical = yNdc * depth * Math.tan(fovY / 2);
+      const zCamCanonical = -depth;
+
+      const camPt = canonicalToAxisCamera([xCamCanonical, yCamCanonical, zCamCanonical], axis);
+      const worldPt = v3Add(camT.pos, m3MulV(camT.rot, camPt));
+      testPoints.push({ label: getNextPointLabel(), pos: worldPt });
+      pointCounter++;
+      generated++;
+    }
+  }
+
+  savePointsToStorage();
+  renderPointsList();
+  rerender();
+}
+
+function renderPointsList() {
+  const list = document.getElementById('points-list');
+  list.innerHTML = '';
+  testPoints.forEach((pt,i) => {
+    const row = document.createElement('div');
+    row.className = 'pt-row';
+    row.innerHTML = `<div class="pt-label">${pt.label}</div>` +
+      ['X','Y','Z'].map((ax,ai)=>`<input type="number" value="${pt.pos[ai]}" step="0.5" title="${ax}" onchange="updatePt(${i},${ai},this.value)">`).join('') +
+      `<button class="pt-copy" title="Copy point" onclick="copyPt(${i})">copy</button>` +
+      `<button class="pt-del" onclick="deletePt(${i})">×</button>`;
+    list.appendChild(row);
+  });
+}
+function updatePt(i,ai,val) { testPoints[i].pos[ai]=parseFloat(val)||0; savePointsToStorage(); rerender(); }
+function deletePt(i) { testPoints.splice(i,1); syncPointCounter(); savePointsToStorage(); renderPointsList(); rerender(); }
+
+async function copyPt(i) {
+  const pt = testPoints[i];
+  if (!pt) return;
+  const camT = getCameraTransform();
+  const proj = projectPoint(pt.pos);
+  const payload = {
+    label: pt.label,
+    position: pt.pos,
+    screen_point: proj.status === 'behind' ? null : [proj.xScr, proj.yScr],
+    projection_status: proj.status,
+    distance_to_camera: v3Len(v3Sub(pt.pos, camT.pos))
+  };
+  const text = JSON.stringify(payload);
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch (e) {
+    // Fall through to textarea fallback.
+  }
+
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'absolute';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+}
+
+async function copyAllPts() {
+  const camT = getCameraTransform();
+  const payload = testPoints.map(pt => {
+    const proj = projectPoint(pt.pos);
+    return {
+      label: pt.label,
+      position: pt.pos,
+      screen_point: proj.status === 'behind' ? null : [proj.xScr, proj.yScr],
+      projection_status: proj.status,
+      distance_to_camera: v3Len(v3Sub(pt.pos, camT.pos))
+    };
+  });
+  const text = JSON.stringify(payload, null, 2);
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch (e) {
+    // Fall through to textarea fallback.
+  }
+
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'absolute';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+}
+
+// ─── Viewport drawing ─────────────────────────────────────────────────────────
+const PT_COLORS = ['#4f8ef7','#f7a24f','#4fcf8a','#f74f6a','#c87ef7','#7ef7e8','#f7e87e','#f77eb8'];
+function ptColor(i) { return PT_COLORS[i % PT_COLORS.length]; }
+
+function sizeCanvases() {
+  ['top','front','cam','side','3d'].forEach(id => {
+    const vp = document.getElementById('vp-'+id);
+    const c = document.getElementById('c-'+id);
+    c.width = vp.clientWidth;
+    c.height = vp.clientHeight;
+  });
+}
+
+function draw3DView() {
+  const c = document.getElementById('c-3d');
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0a0c12';
+  ctx.fillRect(0,0,W,H);
+
+  const cp = Math.cos(vp3D.pitch), sp = Math.sin(vp3D.pitch);
+  const cy = Math.cos(vp3D.yaw), sy = Math.sin(vp3D.yaw);
+  const camPos = [
+    vp3D.target[0] + vp3D.dist * cp * cy,
+    vp3D.target[1] + vp3D.dist * sp,
+    vp3D.target[2] + vp3D.dist * cp * sy,
+  ];
+
+  const fwd = v3Norm(v3Sub(vp3D.target, camPos));
+  let right = v3Cross(fwd, [0,1,0]);
+  if (v3Len(right) < 1e-6) right = v3Cross(fwd, [0,0,1]);
+  right = v3Norm(right);
+  const up = v3Norm(v3Cross(right, fwd));
+
+  const fov = d2r(60);
+  const focal = (H * 0.5) / Math.tan(fov * 0.5);
+  const project = (p) => {
+    const rel = v3Sub(p, camPos);
+    const x = v3Dot(rel, right);
+    const y = v3Dot(rel, up);
+    const z = v3Dot(rel, fwd);
+    if (z <= 0.05) return null;
+    return [W * 0.5 + (x * focal) / z, H * 0.5 - (y * focal) / z, z];
+  };
+
+  // Ground grid (Y=0 plane)
+  ctx.strokeStyle = '#1e2334';
+  ctx.lineWidth = 1;
+  const extent = 12;
+  for (let g=-extent; g<=extent; g++) {
+    const a1 = project([g, 0, -extent]);
+    const a2 = project([g, 0, extent]);
+    const b1 = project([-extent, 0, g]);
+    const b2 = project([extent, 0, g]);
+    if (a1 && a2) { ctx.beginPath(); ctx.moveTo(a1[0],a1[1]); ctx.lineTo(a2[0],a2[1]); ctx.stroke(); }
+    if (b1 && b2) { ctx.beginPath(); ctx.moveTo(b1[0],b1[1]); ctx.lineTo(b2[0],b2[1]); ctx.stroke(); }
+  }
+
+  const drawLine3D = (a,b,color,width=1) => {
+    const p1 = project(a), p2 = project(b);
+    if (!p1 || !p2) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(p1[0], p1[1]);
+    ctx.lineTo(p2[0], p2[1]);
+    ctx.stroke();
+  };
+
+  const drawPoint3D = (p,color,r=4) => {
+    const pp = project(p);
+    if (!pp) return null;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(pp[0], pp[1], r, 0, Math.PI*2);
+    ctx.fill();
+    return pp;
+  };
+
+  // World axes
+  drawLine3D([0,0,0],[2,0,0],'#f74f6a',2);
+  drawLine3D([0,0,0],[0,2,0],'#4fcf8a',2);
+  drawLine3D([0,0,0],[0,0,2],'#4f8ef7',2);
+
+  // Frames and frame links
+  Object.values(frames).forEach(f => {
+    const wt = getWorldTransform(f.name);
+    if (f.parent_frame) {
+      const pt = getWorldTransform(f.parent_frame);
+      drawLine3D(pt.pos, wt.pos, '#2a3045', 1);
+    }
+    const p = drawPoint3D(wt.pos, '#4f8ef7', 4);
+    if (p) {
+      ctx.fillStyle = '#4f8ef7';
+      ctx.font = '11px monospace';
+      ctx.fillText(f.name, p[0] + 6, p[1] - 6);
+    }
+    const ex = v3Add(wt.pos, v3Scale(m3MulV(wt.rot,[1,0,0]),0.6));
+    const ey = v3Add(wt.pos, v3Scale(m3MulV(wt.rot,[0,1,0]),0.6));
+    const ez = v3Add(wt.pos, v3Scale(m3MulV(wt.rot,[0,0,1]),0.6));
+    drawLine3D(wt.pos, ex, '#f74f6a', 1.5);
+    drawLine3D(wt.pos, ey, '#4fcf8a', 1.5);
+    drawLine3D(wt.pos, ez, '#4f8ef7', 1.5);
+  });
+
+  // Camera pose and direction
+  const camT = getCameraTransform();
+  const camP = drawPoint3D(camT.pos, '#f7a24f', 5);
+  if (camP) {
+    ctx.fillStyle = '#f7a24f';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText('cam', camP[0] + 7, camP[1] - 7);
+  }
+  const camFwdEnd = v3Add(camT.pos, v3Scale(v3Norm(getCameraFwd()), 1.6));
+  drawLine3D(camT.pos, camFwdEnd, '#f7a24f', 2);
+
+  // Test points
+  testPoints.forEach((pt,i) => {
+    const res = projectPoint(pt.pos);
+    const col = res.status==='ok' ? ptColor(i) : res.status==='behind' ? '#555' : '#888';
+    const p = drawPoint3D(pt.pos, col, 4);
+    if (p) {
+      ctx.fillStyle = col;
+      ctx.font = '10px monospace';
+      ctx.fillText(pt.label, p[0] + 5, p[1] - 4);
+    }
+  });
+}
+
+function drawScene3D(canvasId, vpId, projFn, axes, title) {
+  const c = document.getElementById(canvasId);
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const st = vpState[vpId];
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0f1117';
+  ctx.fillRect(0,0,W,H);
+
+  const toCanvas = (wx,wy) => [W/2 + st.ox + wx*st.scale, H/2 + st.oy + wy*st.scale];
+
+  // Grid
+  ctx.strokeStyle = '#1e2334';
+  ctx.lineWidth = 0.5;
+  const gridStep = 1;
+  const ext = Math.ceil(Math.max(W,H) / st.scale) + 2;
+  for(let g=-ext;g<=ext;g++) {
+    const [x0,y0]=toCanvas(g*gridStep,-ext*gridStep), [x1,y1]=toCanvas(g*gridStep,ext*gridStep);
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    const [x2,y2]=toCanvas(-ext*gridStep,g*gridStep), [x3,y3]=toCanvas(ext*gridStep,g*gridStep);
+    ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x3,y3); ctx.stroke();
+  }
+
+  // Axes at origin
+  const [ox,oy] = toCanvas(0,0);
+  const axLen = 30;
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#f74f6a'; ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox+axLen,oy); ctx.stroke();
+  ctx.strokeStyle = '#4fcf8a'; ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,oy-axLen); ctx.stroke();
+  ctx.fillStyle = '#f74f6a'; ctx.font = '9px monospace'; ctx.fillText(axes[0],ox+axLen+3,oy+3);
+  ctx.fillStyle = '#4fcf8a'; ctx.fillText(axes[1],ox+3,oy-axLen-3);
+
+  // Frame axes
+  Object.values(frames).forEach(f => {
+    const wt = getWorldTransform(f.name);
+    const [fx,fy] = projFn(wt.pos);
+    const [fpx,fpy] = toCanvas(fx,fy);
+
+    // Draw parent→child line
+    if (f.parent_frame) {
+      const pt = getWorldTransform(f.parent_frame);
+      const [ppx,ppy] = projFn(pt.pos);
+      const [px,py] = toCanvas(ppx,ppy);
+      ctx.strokeStyle = '#2a3045'; ctx.lineWidth = 1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(fpx,fpy); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Frame origin dot
+    ctx.fillStyle = '#4f8ef7';
+    ctx.beginPath(); ctx.arc(fpx,fpy,4,0,Math.PI*2); ctx.fill();
+
+    // Frame local axes (X=red, Y=green, Z=blue - pick relevant two)
+    const aScale = st.scale * 0.5;
+    const fwdX = m3MulV(wt.rot,[1,0,0]);
+    const fwdY = m3MulV(wt.rot,[0,1,0]);
+    const fwdZ = m3MulV(wt.rot,[0,0,1]);
+    [[fwdX,'#f74f6a'],[fwdY,'#4fcf8a'],[fwdZ,'#4f8ef7']].forEach(([fw,col])=>{
+      const [ex,ey] = projFn(v3Add(wt.pos, v3Scale(fw,0.4)));
+      const [ecx,ecy] = toCanvas(ex,ey);
+      ctx.strokeStyle=col; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(fpx,fpy); ctx.lineTo(ecx,ecy); ctx.stroke();
+    });
+
+    // Label
+    ctx.fillStyle = '#4f8ef7'; ctx.font = 'bold 11px monospace';
+    ctx.fillText(f.name, fpx+6, fpy-6);
+  });
+
+  // Camera
+  const camT = getCameraTransform();
+  const [cpx2,cpy2] = projFn(camT.pos);
+  const [cpx,cpy] = toCanvas(cpx2,cpy2);
+
+  // Camera frustum corners (rough)
+  const intr = getCameraIntrinsics();
+  const fovY = intr.fovY;
+  const aspect = intr.W / intr.H;
+  const ax = document.getElementById('cam-axis').value;
+  const fwdLocal = ax==='-Z'?[0,0,-1]:ax==='+Z'?[0,0,1]:ax==='-X'?[-1,0,0]:[1,0,0];
+  const fwd = m3MulV(camT.rot, fwdLocal);
+  const up = m3MulV(camT.rot, [0,1,0]);
+  const right = v3Cross(fwd,up);
+  const near = 0.5, frustLen = 2.5;
+  const hY = Math.tan(d2r(fovY)/2)*frustLen;
+  const hX = hY * aspect;
+  const fc = v3Add(camT.pos, v3Scale(fwd, frustLen));
+  const corners = [
+    v3Add(v3Add(fc, v3Scale(right,hX)), v3Scale(up,hY)),
+    v3Add(v3Add(fc, v3Scale(right,-hX)), v3Scale(up,hY)),
+    v3Add(v3Add(fc, v3Scale(right,-hX)), v3Scale(up,-hY)),
+    v3Add(v3Add(fc, v3Scale(right,hX)), v3Scale(up,-hY)),
+  ];
+  ctx.strokeStyle = '#f7a24f44'; ctx.lineWidth = 1;
+  corners.forEach(corner => {
+    const [cx2,cy2] = projFn(corner);
+    const [cx3,cy3] = toCanvas(cx2,cy2);
+    ctx.beginPath(); ctx.moveTo(cpx,cpy); ctx.lineTo(cx3,cy3); ctx.stroke();
+  });
+  // frustum rect
+  ctx.strokeStyle = '#f7a24f66'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  corners.forEach((corner,i) => {
+    const [cx2,cy2] = projFn(corner);
+    const [cx3,cy3] = toCanvas(cx2,cy2);
+    if(i===0) ctx.moveTo(cx3,cy3); else ctx.lineTo(cx3,cy3);
+  });
+  ctx.closePath(); ctx.stroke();
+
+  // Camera dot
+  ctx.fillStyle = '#f7a24f';
+  ctx.beginPath(); ctx.arc(cpx,cpy,5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f7a24f'; ctx.font='bold 11px monospace';
+  ctx.fillText('cam', cpx+7,cpy-7);
+
+  // Test points
+  testPoints.forEach((pt,i) => {
+    const [px2,py2] = projFn(pt.pos);
+    const [pxc,pyc] = toCanvas(px2,py2);
+    const res = projectPoint(pt.pos);
+    const col = res.status==='ok' ? ptColor(i) : res.status==='behind' ? '#444' : '#888';
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(pxc,pyc,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = col; ctx.font='10px monospace';
+    ctx.fillText(pt.label, pxc+5, pyc-4);
+  });
+}
+
+function drawCameraView() {
+  const c = document.getElementById('c-cam');
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const intr = getCameraIntrinsics();
+  const camW = intr.W;
+  const camH = intr.H;
+  const aspect = camW/camH;
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0c12'; ctx.fillRect(0,0,W,H);
+
+  // Letterbox the camera frame inside the canvas
+  let fw, fh;
+  if (W/H > aspect) { fh=H-30; fw=fh*aspect; } else { fw=W-8; fh=fw/aspect; }
+  const fx=(W-fw)/2, fy=(H-fh-30)/2;
+
+  // Camera frame border
+  ctx.strokeStyle='#2a3045'; ctx.lineWidth=1;
+  ctx.strokeRect(fx,fy,fw,fh);
+
+  // Crosshair
+  ctx.strokeStyle='#2a3045'; ctx.lineWidth=0.5;
+  ctx.beginPath(); ctx.moveTo(fx+fw/2,fy); ctx.lineTo(fx+fw/2,fy+fh); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(fx,fy+fh/2); ctx.lineTo(fx+fw,fy+fh/2); ctx.stroke();
+
+  // Rule of thirds
+  ctx.strokeStyle='#1e2334'; ctx.lineWidth=0.5;
+  [1/3,2/3].forEach(t=>{
+    ctx.beginPath(); ctx.moveTo(fx+fw*t,fy); ctx.lineTo(fx+fw*t,fy+fh); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(fx,fy+fh*t); ctx.lineTo(fx+fw,fy+fh*t); ctx.stroke();
+  });
+
+  // Project points
+  const chips = [];
+  testPoints.forEach((pt,i) => {
+    const res = projectPoint(pt.pos);
+    const col = ptColor(i);
+    let chipClass = res.status;
+
+    if (res.status !== 'behind') {
+      // Map from screen coords to canvas
+      const sx = fx + (res.xScr/camW)*fw;
+      const sy = fy + (res.yScr/camH)*fh;
+
+      if (res.status==='ok') {
+        // Crosshair marker
+        ctx.strokeStyle=col; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(sx-8,sy); ctx.lineTo(sx+8,sy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx,sy-8); ctx.lineTo(sx,sy+8); ctx.stroke();
+        ctx.beginPath(); ctx.arc(sx,sy,5,0,Math.PI*2); ctx.strokeStyle=col; ctx.stroke();
+      } else {
+        // Off-screen: clamp and show arrow at edge
+        const cx2 = Math.max(fx+4, Math.min(fx+fw-4, sx));
+        const cy2 = Math.max(fy+4, Math.min(fy+fh-4, sy));
+        ctx.fillStyle='#88888844'; ctx.beginPath(); ctx.arc(cx2,cy2,4,0,Math.PI*2); ctx.fill();
+      }
+
+      // Label
+      ctx.fillStyle=col; ctx.font='bold 10px monospace';
+      const lx=Math.max(fx+2,Math.min(fx+fw-20,sx+7));
+      const ly=Math.max(fy+10,Math.min(fy+fh-2,sy-5));
+      if(res.status==='ok') ctx.fillText(pt.label,lx,ly);
+
+      chips.push({
+        label: pt.label, col,
+        text: res.status==='ok'
+          ? `(${res.xScr.toFixed(1)}, ${res.yScr.toFixed(1)})`
+          : `off (${res.xNdc.toFixed(2)}, ${res.yNdc.toFixed(2)})`,
+        status: res.status
+      });
+    } else {
+      chips.push({ label: pt.label, col, text:'behind', status:'behind' });
+    }
+  });
+
+  // Pixel resolution label
+  ctx.fillStyle='#2a3045'; ctx.font='9px monospace';
+  ctx.fillText(`${camW}×${camH}`, fx+3, fy+fh-3);
+
+  // Status chips
+  const projStatus = document.getElementById('proj-status');
+  projStatus.innerHTML = chips.map(ch=>{
+    const cls = ch.status==='ok'?'chip-ok':ch.status==='behind'?'chip-behind':'chip-off';
+    return `<div class="proj-chip"><span class="chip-label">${ch.label}</span><span class="${cls}">${ch.text}</span></div>`;
+  }).join('');
+}
+
+function rerender() {
+  // Update camera world pos display
+  const camT = getCameraTransform();
+  const intr = getCameraIntrinsics();
+  const camName = document.getElementById('cam-name').value || 'camera';
+  const refPath = document.getElementById('cam-ref-path').value || '—';
+  document.getElementById('cam-world-pos').textContent =
+    `cam @ world: (${camT.pos.map(v=>v.toFixed(3)).join(', ')})`;
+  document.getElementById('cam-info').innerHTML =
+    `name: ${camName}<br>` +
+    `fov: ${intr.fovX.toFixed(2)}° × ${intr.fovY.toFixed(2)}°<br>` +
+    `sensor: ${intr.sw ?? '—'} × ${intr.sh ?? '—'} mm<br>` +
+    `focal: ${intr.fl ?? '—'} mm<br>` +
+    `ref: ${refPath}`;
+
+  const top = (p) => [p[0], p[2]];
+  const front = (p) => [p[0], -p[1]];
+  const side = (p) => [p[2], -p[1]];
+
+  drawScene3D('c-top',   'top',   top,   ['X','Z'], 'Top');
+  drawScene3D('c-front', 'front', front, ['X','Y'], 'Front');
+  drawScene3D('c-side',  'side',  side,  ['Z','Y'], 'Side');
+  drawCameraView();
+  draw3DView();
+}
+
+// ─── Viewport interactions ────────────────────────────────────────────────────
+['top','front','side'].forEach(id => {
+  const c = document.getElementById('c-'+id);
+  const st = vpState[id];
+  c.addEventListener('wheel', e => {
+    e.preventDefault();
+    st.scale = Math.max(10, Math.min(400, st.scale * (e.deltaY<0?1.12:0.89)));
+    rerender();
+  }, {passive:false});
+  c.addEventListener('mousedown', e => { st.dragging=true; st.mx=e.clientX; st.my=e.clientY; });
+  c.addEventListener('mousemove', e => {
+    if(!st.dragging) return;
+    st.ox += e.clientX-st.mx; st.oy += e.clientY-st.my;
+    st.mx=e.clientX; st.my=e.clientY; rerender();
+  });
+  c.addEventListener('mouseup', ()=>st.dragging=false);
+  c.addEventListener('mouseleave', ()=>st.dragging=false);
+});
+
+const c3d = document.getElementById('c-3d');
+c3d.addEventListener('contextmenu', e => e.preventDefault());
+c3d.addEventListener('wheel', e => {
+  e.preventDefault();
+  vp3D.dist = Math.max(1.5, Math.min(400, vp3D.dist * (e.deltaY < 0 ? 0.9 : 1.1)));
+  rerender();
+}, {passive:false});
+c3d.addEventListener('mousedown', e => {
+  vp3D.dragging = true;
+  vp3D.panMode = e.button === 2 || e.shiftKey;
+  vp3D.mx = e.clientX;
+  vp3D.my = e.clientY;
+});
+c3d.addEventListener('mousemove', e => {
+  if (!vp3D.dragging) return;
+  const dx = e.clientX - vp3D.mx;
+  const dy = e.clientY - vp3D.my;
+  vp3D.mx = e.clientX;
+  vp3D.my = e.clientY;
+
+  if (vp3D.panMode) {
+    const cp = Math.cos(vp3D.pitch), sp = Math.sin(vp3D.pitch);
+    const cy = Math.cos(vp3D.yaw), sy = Math.sin(vp3D.yaw);
+    const camPos = [
+      vp3D.target[0] + vp3D.dist * cp * cy,
+      vp3D.target[1] + vp3D.dist * sp,
+      vp3D.target[2] + vp3D.dist * cp * sy,
+    ];
+    const fwd = v3Norm(v3Sub(vp3D.target, camPos));
+    let right = v3Cross(fwd, [0,1,0]);
+    if (v3Len(right) < 1e-6) right = v3Cross(fwd, [0,0,1]);
+    right = v3Norm(right);
+    const up = v3Norm(v3Cross(right, fwd));
+    const panScale = vp3D.dist * 0.0025;
+    vp3D.target = v3Add(vp3D.target, v3Add(v3Scale(right, -dx * panScale), v3Scale(up, dy * panScale)));
+  } else {
+    vp3D.yaw -= dx * 0.006;
+    vp3D.pitch += dy * 0.006;
+    vp3D.pitch = Math.max(-1.45, Math.min(1.45, vp3D.pitch));
+  }
+  rerender();
+});
+c3d.addEventListener('mouseup', ()=>{ vp3D.dragging = false; });
+c3d.addEventListener('mouseleave', ()=>{ vp3D.dragging = false; });
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => { sizeCanvases(); rerender(); });
+
+// Load drone.json by default
+frames['drone'] = { name:'drone', position:[1,2,3], orientation:[0,0,0], parent_frame:'world' };
+loadPointsFromStorage();
+
+sizeCanvases();
+renderFramesList();
+renderPointsList();
+updateCamParentSelect();
+document.getElementById('cam-parent').value = 'drone';
+rerender();
+</script>
+</body>
+</html>

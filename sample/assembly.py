@@ -7,7 +7,7 @@ from sample.camera import Camera
 from sample.reference_frame import ReferenceFrame
 
 class Assembly(BaseModel):
-    camera_path: P[str] = P('camera_path', None, can_be_none=True)
+    camera_path: P[str] = P('camera_path', None, can_be_none=False)
     reference_frames_paths: P[list[str]] = P('reference_frames_paths', None, can_be_none=True)
 
     def __init__(self, name=None):

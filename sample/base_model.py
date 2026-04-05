@@ -19,7 +19,7 @@ class BaseModel:
     @hooks.disable_other_hooks
     def fill_initial_values(self, name):
         class_name = utils.unformalize_str(self.__class__.__name__)
-        storage_filename = os.path.join(class_name, f"{name}.json") if name is not None else f"{class_name}.json"
+        storage_filename = os.path.join(class_name, f"{name if name is not None else class_name}.json")
 
         self.storage_path = utils.get_unique_path(os.path.join(constants.CONFIG_FOLDER, storage_filename))
         if name is not None:
